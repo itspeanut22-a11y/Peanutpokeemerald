@@ -763,6 +763,7 @@ static bool8 StartMenuAdminCallback(void)
         RemoveExtraStartMenuWindows();
         CleanupOverworldWindowsAndTilemaps();
         SetMainCallback2(CB2_InitAdminMenu);
+        gMain.savedCallback = CB2_ReturnToFieldWithOpenMenu;
         return TRUE;
     }
 
