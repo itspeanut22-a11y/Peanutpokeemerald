@@ -65,12 +65,15 @@ static const struct WindowTemplate sAdminWindowTemplates[] =
 void CB2_InitAdminMenu(void)
 {
     ResetTasks();
+    SetGpuReg(REG_OFFSET_DISPCNT, 0);
     ResetSpriteData();
     FreeAllSpritePalettes();
     ResetPaletteFade();
     ScanlineEffect_Stop();
 
     AdminSettings_EnsureInitialized();
+    ChangeBgX(0, 0, BG_COORD_SET);
+    ChangeBgY(0, 0, BG_COORD_SET);
     AdminMenu_InitBgs();
 
     SetVBlankCallback(AdminMenu_VBlankCB);
@@ -92,6 +95,7 @@ static void AdminMenu_InitBgs(void)
     CopyWindowToVram(0, COPYWIN_FULL);
 
     ShowBg(0);
+    SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_BG0_ON);
 }
 
 static void AdminMenu_Print(void)
