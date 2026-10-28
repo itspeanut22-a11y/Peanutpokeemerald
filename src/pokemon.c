@@ -1,4 +1,5 @@
 #include "global.h"
+#include "admin_settings.h"
 #include "malloc.h"
 #include "apprentice.h"
 #include "battle.h"
@@ -2236,10 +2237,31 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
     }
     else // Player is the OT
     {
+        u32 shinyValue;
+        u32 shinyThreshold;
+
         value = gSaveBlock2Ptr->playerTrainerId[0]
               | (gSaveBlock2Ptr->playerTrainerId[1] << 8)
               | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
               | (gSaveBlock2Ptr->playerTrainerId[3] << 24);
+
+        shinyThreshold = AdminSettings_GetShinyThreshold();
+
+        // Keep vanilla generation unless the configured rate triggers.
+        // For a successful boosted roll, generate a genuinely shiny
+        // personality using the player's trainer ID.
+        if (!hasFixedPersonality
+            && shinyThreshold > SHINY_ODDS
+            && (Random32() & 0xFFFF) < shinyThreshold)
+        {
+            do
+            {
+                personality = Random32();
+                shinyValue = GET_SHINY_VALUE(value, personality);
+            } while (shinyValue >= SHINY_ODDS);
+
+            SetBoxMonData(boxMon, MON_DATA_PERSONALITY, &personality);
+        }
     }
 
     SetBoxMonData(boxMon, MON_DATA_OT_ID, &value);
@@ -2310,7 +2332,26 @@ void CreateMonWithNature(struct Pokemon *mon, u16 species, u8 level, u8 fixedIV,
     {
         personality = Random32();
     }
-    while (nature != GetNatureFromPersonality(personality));
+    while (nature != GetNatureFromPersonality(personality)
+);
+
+    // Preserve the selected nature, gender, and Unown form.
+    // Boost shiny odds only when the Admin roll succeeds.
+    if (AdminSettings_GetShinyThreshold() > SHINY_ODDS
+        && (Random32() & 0xFFFF) < AdminSettings_GetShinyThreshold())
+    {
+        u32 otId = gSaveBlock2Ptr->playerTrainerId[0]
+                 | (gSaveBlock2Ptr->playerTrainerId[1] << 8)
+                 | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
+                 | (gSaveBlock2Ptr->playerTrainerId[3] << 24);
+
+        // Find a genuinely shiny personality with the same nature.
+        do
+        {
+            personality = Random32();
+        } while (GetNatureFromPersonality(personality) != nature
+              || GET_SHINY_VALUE(otId, personality) >= SHINY_ODDS);
+    }
 
     CreateMon(mon, species, level, fixedIV, TRUE, personality, OT_ID_PLAYER_ID, 0);
 }
@@ -2330,7 +2371,8 @@ void CreateMonWithGenderNatureLetter(struct Pokemon *mon, u16 species, u8 level,
         }
         while (nature != GetNatureFromPersonality(personality)
             || gender != GetGenderFromSpeciesAndPersonality(species, personality)
-            || actualLetter != unownLetter - 1);
+            || actualLetter != unownLetter - 1
+    );
     }
     else
     {
@@ -2339,7 +2381,29 @@ void CreateMonWithGenderNatureLetter(struct Pokemon *mon, u16 species, u8 level,
             personality = Random32();
         }
         while (nature != GetNatureFromPersonality(personality)
-            || gender != GetGenderFromSpeciesAndPersonality(species, personality));
+            || gender != GetGenderFromSpeciesAndPersonality(species, personality)
+    );
+    }
+
+    // Preserve the selected nature, gender, and Unown form.
+    // Boost shiny odds only when the Admin roll succeeds.
+    if (AdminSettings_GetShinyThreshold() > SHINY_ODDS
+        && (Random32() & 0xFFFF) < AdminSettings_GetShinyThreshold())
+    {
+        u32 otId = gSaveBlock2Ptr->playerTrainerId[0]
+                 | (gSaveBlock2Ptr->playerTrainerId[1] << 8)
+                 | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
+                 | (gSaveBlock2Ptr->playerTrainerId[3] << 24);
+
+        // Find a genuinely shiny personality with the same nature.
+        do
+        {
+            personality = Random32();
+        } while (GetNatureFromPersonality(personality) != nature
+              || GetGenderFromSpeciesAndPersonality(species, personality) != gender
+              || ((u8)(unownLetter - 1) < NUM_UNOWN_FORMS
+                  && GET_UNOWN_LETTER(personality) != unownLetter - 1)
+              || GET_SHINY_VALUE(otId, personality) >= SHINY_ODDS);
     }
 
     CreateMon(mon, species, level, fixedIV, TRUE, personality, OT_ID_PLAYER_ID, 0);
